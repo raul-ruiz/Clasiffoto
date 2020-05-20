@@ -13,8 +13,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "/Users/raulruiz/Downloads",
-                "--generate"
+                "/Users/raulruiz/Downloads/"
             ]
         }
     ]

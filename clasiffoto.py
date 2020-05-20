@@ -47,7 +47,7 @@ def getPicInfo(ruta):
 
 
     except OSError:
-        print(Fore.RED+ 'An error ocurred accessing EXIF data for ' + ruta)
+        info = {'model':'','year':'','resx':'','resy':'','sizex':'','sizey':''}
     return info
 
 
@@ -58,7 +58,6 @@ def getFolderImages(path):
     #Loop at folder content
     for file in os.listdir(path):
         #Check extension to process
-       # if file.endswith("jpg") or file.endswith("jpeg") or file.endswith("HEIC") or file.endswith("JPG") or file.endswith("JPEG"): 
         if file.endswith(tuple(_extensions)):
             fotos.append(file)
     return fotos
@@ -71,36 +70,29 @@ def banner():
     )
 
 def moveFile(path,year,model,image):
-    # Check if year and model could be calculated
-    if (not(year) or not(model)):
-        print(Fore.RED + ' => could not be moved as there is no EXIF info')       
+  
+    destinationpath = os.path.join(path,year)
+        
+    # Check if there is already a folder for the year. Otherwise, create
+    if not (os.path.isdir(destinationpath)):
+        os.mkdir(destinationpath)
+
+    #Check if there is already a folder for the model. Otherwise, create
+    destinationpath = os.path.join(destinationpath,model)
+    if not (os.path.isdir(destinationpath)):
+        os.mkdir(destinationpath)
+
+
+
+    #Move file
+    sourcefile = os.path.join(path ,image)
+    destinationfile = os.path.join(destinationpath,image)
+    if os.path.exists(destinationfile):
+        return 'E', 'Not moved: file ' + destinationfile +' already exist'
     else:
-        destinationpath = os.path.join(path,year)
-         
-        # Check if there is already a folder for the year. Otherwise, create
-        if not (os.path.isdir(destinationpath)):
-            os.mkdir(destinationpath)
-
-        #Check if there is already a folder for the model. Otherwise, create
-        destinationpath = os.path.join(destinationpath,model)
-        if not (os.path.isdir(destinationpath)):
-            os.mkdir(destinationpath)
-
-
-
-        #Move file
-        sourcefile = os.path.join(path ,image)
-        destinationfile = os.path.join(destinationpath,image)
-        print("Dest file " + destinationfile)
-        """destination = path + '//' + year + '//' +  model + '//' + images
-        shutil.move(source,destination)"""
-        if os.path.exists(destinationfile):
-            print(Fore.LIGHTRED_EX + ' => not moved: file already exist' )
-        else:
-            shutil.move(sourcefile,destinationfile)
-            print(Fore.GREEN + ' => moved to ' + destinationfile)
-
-
+        shutil.move(sourcefile,destinationfile)
+        return 'S', 'Moved to ' + destinationfile
+        
 def processFolder(path):
     #Obtain images from folder
     images = getFolderImages(path)
@@ -109,15 +101,42 @@ def processFolder(path):
         imageInfo = getPicInfo(path+"/"+image)
       
         # Filter by year if specified
-      
         if ((not args['year'])  or (args['year'] == imageInfo["year"])):
             
-            print(Fore.WHITE + image , Fore.GREEN  + imageInfo["model"] , Fore.YELLOW + imageInfo["year"], Fore.LIGHTYELLOW_EX + imageInfo["resx"] +'x'+ imageInfo["resy"] ,Fore.LIGHTYELLOW_EX + 'W:'+imageInfo["sizex"],Fore.LIGHTYELLOW_EX + 'H:'+imageInfo["sizey"] ,sep=' ')
-            if (args['generate']):
-                #Move file
-                moveFile(path,imageInfo["year"],imageInfo["model"],image)
+
+            if (not imageInfo["year"] or not imageInfo["model"]):
+                 printPicStatus(image,imageInfo,'E','No EXIF info obtained')
+            else:
+                if (args['generate']):
+                    #Move file
+                    response,text = moveFile(path,imageInfo["year"],imageInfo["model"],image)
+                    
+                    #Print depending on onlyerrors flag to hide success
+                    if (not args['onlyerrors'] or ( args['onlyerrors']  and response != 'S') ):
+                        printPicStatus(image,imageInfo,response,text)
+    
+                # If not generating structure, just print if unless onlyerrors
+                
+                else:
+                    if (not args['onlyerrors']):
+                        printPicStatus(image,imageInfo,'','')
 
 
+
+
+def printPicStatus(image,imageInfo,kind,text):
+        
+    print(Fore.WHITE + image , Fore.GREEN  + imageInfo["model"] , Fore.YELLOW + imageInfo["year"], Fore.LIGHTYELLOW_EX + 'Res X:' + imageInfo["resx"] + ' Res Y:' + imageInfo["resy"] , Fore.YELLOW + 'W:' + imageInfo["sizex"],Fore.YELLOW + 'H:'+imageInfo["sizey"] ,sep=' ',end=' ')
+    if (kind == 'S'):
+        print(Fore.WHITE + ' => ',Fore.GREEN + text)
+        return
+    if (kind == 'W'):
+        print(Fore.WHITE + ' => ',Fore.YELLOW + text)
+        return
+    if (kind == 'E'):
+        print(Fore.WHITE + ' => ',Fore.RED + text)
+        return
+    print('')
 
 if __name__ == "__main__":
     #Control arguments with parser
@@ -130,6 +149,7 @@ if __name__ == "__main__":
                        help='Path to the folder that contains images')
     argparser.add_argument('--year', type=str, required=False, action='store', help='Only consider pics with especific year in exif')                       
     argparser.add_argument('--generate', required=False, action='store_true', help='Generate folders for years and camera model')                       
+    argparser.add_argument('--onlyerrors', required=False, action='store_true', help='Show only errors')                       
     
     # Execute the parse_args() method
     args = vars(argparser.parse_args())
