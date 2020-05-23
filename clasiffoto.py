@@ -59,12 +59,21 @@ def getPicInfo(ruta):
 
 def getFolderImages(path):
     fotos = []
-    _extensions =  ["PNG","png","MOV","mov","NEF",'nef',"jpg","jpeg","JPG","JPEG","HEIC","NEF"]
+    otherfiles = []
+    _extensions =  ["PNG","png","MOV","mov","NEF",'nef',"jpg","jpeg","JPG","JPEG","HEIC","heic"]
     #Loop at folder content
     for file in os.listdir(path):
         #Check extension to process
         if file.endswith(tuple(_extensions)):
-            fotos.append(str(file).upper())
+            fotos.append(str(file).lower())
+        else:
+            otherfiles.append(str(file).lower())
+    
+
+    #If there are files not processed, show in log 
+    if otherfiles:
+        printHeader('The folder ' + path + ' contains some files that are not processed:')
+        print(tabulate(otherfiles))
     return fotos
 
 
@@ -222,8 +231,9 @@ def compareFolder(source,destination):
         for image in common:
             imgInfoDest = getPicInfo(destination+"/"+image)
             imgInfoSource = getPicInfo(source+"/"+image)
-            report.append( [image] + list(imgInfoSource.values()) + list(imgInfoDest.values()))
-        print(tabulate(report,headers=['Image','Src.Model','Year','ResX','ResY','Width','Height','Size','Name','Dst.Model','Year','ResX','ResY','Width','Height','Size','Name']))
+            report.append( [image] + list(imgInfoSource.values()) + list(imgInfoDest.values()) + [u'\u2713' if (list(imgInfoSource.values()) == list(imgInfoDest.values()) ) else u'\u03C8' ] )
+       
+        print(tabulate(report,headers=['Image','Src.Model','Year','ResX','ResY','Width','Height','Size','Name','Dst.Model','Year','ResX','ResY','Width','Height','Size','Check']))
 
     if onlySource and not args['onlycommon'] and not args['onlyondestination']:
         printHeader('Image only exist on source folder:'+source)
